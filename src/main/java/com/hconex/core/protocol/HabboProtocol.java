@@ -1,154 +1,147 @@
 package com.hconex.core.protocol;
 
-import com.hconex.core.packets.Packet;
-import com.hconex.core.packets.Packet.Direction;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
+import com.hconex.utils.ByteUtils;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
- * Parser for the Habbo Hotel wire protocol.
- * <p>
- * Habbo packets have the following structure:
- * <pre>
- *   [4 bytes: total body length (big-endian int)]
- *   [2 bytes: header/opcode (big-endian short)]
- *   [N bytes: payload]
- * </pre>
- * This class provides methods to parse raw byte arrays into {@link Packet}
- * objects for both incoming (server→client) and outgoing (client→server)
- * directions.
- * </p>
+ * Habbo Protocol Parser
+ * Handles parsing and encoding of Habbo packets
  */
 public class HabboProtocol {
-
-    private static final Logger logger = LogManager.getLogger(HabboProtocol.class);
-
-    /** Minimum number of bytes required to read a packet header (4 length + 2 opcode). */
-    public static final int MIN_PACKET_SIZE = 6;
-
-    /** Byte offset of the length field within a raw packet. */
-    public static final int LENGTH_OFFSET = 0;
-
-    /** Byte offset of the opcode/header field within a raw packet. */
-    public static final int HEADER_OFFSET = 4;
-
-    /** Byte offset where the payload starts. */
-    public static final int PAYLOAD_OFFSET = 6;
-
+    
+    public static final int HEADER_SIZE = 4;
+    public static final int PACKET_ID_SIZE = 2;
+    
     /**
-     * Parses one or more outgoing (client→server) packets from a raw byte array.
-     *
-     * @param raw raw bytes received from the Habbo client
-     * @return list of parsed {@link Packet} objects; empty if the data is invalid
+     * Parse packet header to get packet length
      */
-    public List<Packet> parseOutgoing(byte[] raw) {
-        return parse(raw, Direction.OUTGOING);
-    }
-
-    /**
-     * Parses one or more incoming (server→client) packets from a raw byte array.
-     *
-     * @param raw raw bytes received from the habbo.es server
-     * @return list of parsed {@link Packet} objects; empty if the data is invalid
-     */
-    public List<Packet> parseIncoming(byte[] raw) {
-        return parse(raw, Direction.INCOMING);
-    }
-
-    /**
-     * Parses packets from a raw byte array in the given direction.
-     *
-     * @param raw       raw bytes to parse
-     * @param direction direction of the packets
-     * @return list of parsed packets
-     */
-    private List<Packet> parse(byte[] raw, Direction direction) {
-        List<Packet> packets = new ArrayList<>();
-
-        if (raw == null || raw.length < MIN_PACKET_SIZE) {
-            logger.debug("Received {} bytes – too small to be a valid Habbo packet", raw == null ? 0 : raw.length);
-            return packets;
+    public static int getPacketLength(byte[] data) {
+        if (data == null || data.length < HEADER_SIZE) {
+            return -1;
         }
-
-        int offset = 0;
-        while (offset + MIN_PACKET_SIZE <= raw.length) {
-            ByteBuffer buf = ByteBuffer.wrap(raw, offset, raw.length - offset)
-                    .order(ByteOrder.BIG_ENDIAN);
-
-            int bodyLength = buf.getInt();           // 4-byte length field
-            if (bodyLength < 2) {                    // must be at least 2 for the opcode
-                logger.warn("Invalid packet body length {} at offset {}", bodyLength, offset);
-                break;
-            }
-
-            int totalLength = 4 + bodyLength;
-            if (offset + totalLength > raw.length) {
-                logger.debug("Incomplete packet at offset {} (need {} bytes, have {})",
-                        offset, totalLength, raw.length - offset);
-                break;
-            }
-
-            int headerId = buf.getShort() & 0xFFFF; // 2-byte opcode
-
-            int payloadLength = bodyLength - 2;
-            byte[] payload = new byte[payloadLength];
-            if (payloadLength > 0) {
-                buf.get(payload);
-            }
-
-            Packet packet = PacketFactory.create(headerId, payload, direction);
-            packets.add(packet);
-
-            logger.debug("Parsed {} packet – header=0x{} ({}), payload={} bytes",
-                    direction, Integer.toHexString(headerId), headerId, payloadLength);
-
-            offset += totalLength;
+        return ByteUtils.readInt(data, 0);
+    }
+    
+    /**
+     * Parse packet ID from data
+     */
+    public static int getPacketId(byte[] data) {
+        if (data == null || data.length < HEADER_SIZE + PACKET_ID_SIZE) {
+            return -1;
         }
-
-        return packets;
+        return ByteUtils.readShort(data, HEADER_SIZE);
     }
-
+    
     /**
-     * Reads a big-endian {@code int} from four consecutive bytes starting at
-     * the given offset.
-     *
-     * @param data   source byte array
-     * @param offset starting index
-     * @return the integer value
+     * Get packet payload (data after header and ID)
      */
-    public static int readInt(byte[] data, int offset) {
-        return ByteBuffer.wrap(data, offset, 4).order(ByteOrder.BIG_ENDIAN).getInt();
+    public static byte[] getPacketPayload(byte[] data) {
+        if (data == null || data.length <= HEADER_SIZE + PACKET_ID_SIZE) {
+            return new byte[0];
+        }
+        
+        byte[] payload = new byte[data.length - HEADER_SIZE - PACKET_ID_SIZE];
+        System.arraycopy(data, HEADER_SIZE + PACKET_ID_SIZE, payload, 0, payload.length);
+        return payload;
     }
-
+    
     /**
-     * Reads a big-endian {@code short} from two consecutive bytes starting at
-     * the given offset.
-     *
-     * @param data   source byte array
-     * @param offset starting index
-     * @return the short value (unsigned, widened to {@code int})
+     * Read a string from packet payload at offset
      */
-    public static int readShort(byte[] data, int offset) {
-        return ByteBuffer.wrap(data, offset, 2).order(ByteOrder.BIG_ENDIAN).getShort() & 0xFFFF;
+    public static String readString(byte[] payload, int offset) {
+        if (payload == null || offset < 0 || offset >= payload.length) {
+            return "";
+        }
+        
+        // Read string length (2 bytes)
+        int length = ByteUtils.readShort(payload, offset);
+        if (length <= 0 || offset + 2 + length > payload.length) {
+            return "";
+        }
+        
+        return new String(payload, offset + 2, length);
     }
-
+    
     /**
-     * Reads a length-prefixed UTF-8 string starting at the given offset.
-     * <p>
-     * The string is preceded by a 2-byte big-endian length.
-     * </p>
-     *
-     * @param data   source byte array
-     * @param offset starting index
-     * @return the decoded string
+     * Read an integer from payload at offset
      */
-    public static String readString(byte[] data, int offset) {
-        int length = readShort(data, offset);
-        return new String(data, offset + 2, length, java.nio.charset.StandardCharsets.UTF_8);
+    public static int readInt(byte[] payload, int offset) {
+        if (payload == null || offset + 4 > payload.length) {
+            return 0;
+        }
+        return ByteUtils.readInt(payload, offset);
+    }
+    
+    /**
+     * Read a short from payload at offset
+     */
+    public static short readShort(byte[] payload, int offset) {
+        if (payload == null || offset + 2 > payload.length) {
+            return 0;
+        }
+        return ByteUtils.readShort(payload, offset);
+    }
+    
+    /**
+     * Read a byte from payload at offset
+     */
+    public static byte readByte(byte[] payload, int offset) {
+        if (payload == null || offset >= payload.length) {
+            return 0;
+        }
+        return payload[offset];
+    }
+    
+    /**
+     * Check if packet is complete (has full length)
+     */
+    public static boolean isPacketComplete(byte[] data) {
+        if (data == null || data.length < HEADER_SIZE) {
+            return false;
+        }
+        
+        int packetLength = getPacketLength(data);
+        return data.length >= packetLength + HEADER_SIZE;
+    }
+    
+    /**
+     * Build a complete packet (header + id + payload)
+     */
+    public static byte[] buildPacket(int packetId, byte[] payload) {
+        if (payload == null) {
+            payload = new byte[0];
+        }
+        
+        int totalLength = PACKET_ID_SIZE + payload.length;
+        byte[] packet = new byte[HEADER_SIZE + totalLength];
+        
+        // Write length header
+        ByteUtils.writeInt(packet, 0, totalLength);
+        
+        // Write packet ID
+        ByteUtils.writeShort(packet, HEADER_SIZE, (short) packetId);
+        
+        // Write payload
+        if (payload.length > 0) {
+            System.arraycopy(payload, 0, packet, HEADER_SIZE + PACKET_ID_SIZE, payload.length);
+        }
+        
+        return packet;
+    }
+    
+    /**
+     * Get human-readable packet info
+     */
+    public static String getPacketInfo(byte[] data) {
+        if (data == null || data.length < HEADER_SIZE + PACKET_ID_SIZE) {
+            return "Invalid packet";
+        }
+        
+        int length = getPacketLength(data);
+        int id = getPacketId(data);
+        int payloadSize = data.length - HEADER_SIZE - PACKET_ID_SIZE;
+        
+        return String.format("Length: %d, ID: %d (0x%04X), Payload: %d bytes", 
+                             length, id, id, payloadSize);
     }
 }

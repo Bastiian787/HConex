@@ -1,99 +1,94 @@
 package com.hconex.core.protocol;
 
-import com.hconex.core.packets.Packet;
-
+import com.hconex.utils.ByteUtils;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.charset.StandardCharsets;
 
 /**
- * Encodes {@link Packet} objects into the Habbo wire format.
- * <p>
- * Habbo packets are encoded as:
- * <pre>
- *   [4 bytes: body length (big-endian int)] = opcode (2) + payload (N)
- *   [2 bytes: opcode (big-endian short)]
- *   [N bytes: payload]
- * </pre>
- * </p>
+ * Encodes data into Habbo packets
  */
-public final class PacketEncoder {
-
-    private PacketEncoder() {
-        throw new UnsupportedOperationException("PacketEncoder is a utility class");
-    }
-
+public class PacketEncoder {
+    
     /**
-     * Encodes a {@link Packet} into its raw byte representation.
-     *
-     * @param packet the packet to encode
-     * @return a byte array containing the full encoded packet
+     * Encode a string value
      */
-    public static byte[] encode(Packet packet) {
-        byte[] payload = packet.getPayload();
-        int bodyLength = 2 + payload.length; // opcode (2) + payload
-
-        ByteBuffer buf = ByteBuffer.allocate(4 + bodyLength)
-                .order(ByteOrder.BIG_ENDIAN);
-        buf.putInt(bodyLength);
-        buf.putShort((short) (packet.getHeaderId() & 0xFFFF));
-        buf.put(payload);
-
-        return buf.array();
+    public static byte[] encodeString(String value) {
+        if (value == null) {
+            value = "";
+        }
+        
+        byte[] stringBytes = value.getBytes();
+        byte[] encoded = new byte[2 + stringBytes.length];
+        
+        // Write length (2 bytes)
+        ByteUtils.writeShort(encoded, 0, (short) stringBytes.length);
+        
+        // Write string
+        System.arraycopy(stringBytes, 0, encoded, 2, stringBytes.length);
+        
+        return encoded;
     }
-
+    
     /**
-     * Builds a raw Habbo packet from an opcode and a pre-serialised payload.
-     *
-     * @param headerId the 2-byte packet opcode
-     * @param payload  the payload bytes
-     * @return the encoded packet bytes
+     * Encode an integer value
      */
-    public static byte[] encode(int headerId, byte[] payload) {
-        int bodyLength = 2 + payload.length;
-        ByteBuffer buf = ByteBuffer.allocate(4 + bodyLength)
-                .order(ByteOrder.BIG_ENDIAN);
-        buf.putInt(bodyLength);
-        buf.putShort((short) (headerId & 0xFFFF));
-        buf.put(payload);
-        return buf.array();
+    public static byte[] encodeInt(int value) {
+        byte[] encoded = new byte[4];
+        ByteUtils.writeInt(encoded, 0, value);
+        return encoded;
     }
-
+    
     /**
-     * Serialises a big-endian {@code int} to a 4-byte array.
-     *
-     * @param value the integer value to write
-     * @return 4-byte representation
+     * Encode a short value
      */
-    public static byte[] writeInt(int value) {
-        return ByteBuffer.allocate(4).order(ByteOrder.BIG_ENDIAN).putInt(value).array();
+    public static byte[] encodeShort(short value) {
+        byte[] encoded = new byte[2];
+        ByteUtils.writeShort(encoded, 0, value);
+        return encoded;
     }
-
+    
     /**
-     * Serialises a big-endian {@code short} to a 2-byte array.
-     *
-     * @param value the short value to write
-     * @return 2-byte representation
+     * Encode a single byte
      */
-    public static byte[] writeShort(short value) {
-        return ByteBuffer.allocate(2).order(ByteOrder.BIG_ENDIAN).putShort(value).array();
+    public static byte[] encodeByte(byte value) {
+        return new byte[] { value };
     }
-
+    
     /**
-     * Serialises a length-prefixed UTF-8 string.
-     * <p>
-     * Format: {@code [2-byte big-endian length][UTF-8 bytes]}
-     * </p>
-     *
-     * @param value the string to serialise
-     * @return the length-prefixed byte array
+     * Combine multiple byte arrays
      */
-    public static byte[] writeString(String value) {
-        byte[] strBytes = value.getBytes(StandardCharsets.UTF_8);
-        ByteBuffer buf = ByteBuffer.allocate(2 + strBytes.length)
-                .order(ByteOrder.BIG_ENDIAN);
-        buf.putShort((short) strBytes.length);
-        buf.put(strBytes);
-        return buf.array();
+    public static byte[] combine(byte[]... arrays) {
+        int totalLength = 0;
+        for (byte[] arr : arrays) {
+            if (arr != null) {
+                totalLength += arr.length;
+            }
+        }
+        
+        byte[] combined = new byte[totalLength];
+        int offset = 0;
+        
+        for (byte[] arr : arrays) {
+            if (arr != null) {
+                System.arraycopy(arr, 0, combined, offset, arr.length);
+                offset += arr.length;
+            }
+        }
+        
+        return combined;
+    }
+    
+    /**
+     * Create a complete packet with payload
+     */
+    public static byte[] createPacket(int packetId, byte[]... payloadParts) {
+        byte[] payload = combine(payloadParts);
+        return HabboProtocol.buildPacket(packetId, payload);
+    }
+    
+    /**
+     * Encode a boolean value (stored as 0 or 1)
+     */
+    public static byte[] encodeBoolean(boolean value) {
+        return new byte[] { (byte) (value ? 1 : 0) };
     }
 }
