@@ -1,11 +1,10 @@
 package com.hconex;
 
 import com.hconex.config.HabboConfig;
-import com.hconex.core.protocol.HabboProtocol;
-import com.hconex.core.protocol.PacketFactory;
+import com.hconex.core.packets.Packet;
 import com.hconex.core.proxy.ProxyServer;
 import com.hconex.logging.PacketLogger;
-import com.hconex.core.packets.Packet;
+import com.hconex.ui.ConsoleUI;
 
 /**
  * Main Application class for HConex v0.0.1
@@ -15,42 +14,42 @@ public class Application {
     private static ProxyServer proxyServer;
     private static PacketLogger packetLogger;
     private static HabboConfig config;
+    private static final ConsoleUI consoleUI = new ConsoleUI();
     private static boolean running = false;
+    private static int incomingCount = 0;
+    private static int outgoingCount = 0;
     
     public static void main(String[] args) {
         try {
-            System.out.println("========================================");
-            System.out.println("HConex v0.0.1 - Habbo Interceptor Proxy");
-            System.out.println("========================================");
+            consoleUI.printHeader("HConex v0.0.1 - Habbo Interceptor Proxy");
             
             // Initialize configuration
             config = new HabboConfig();
-            System.out.println("Configuration loaded:");
-            System.out.println("  Proxy Port: " + config.getProxyPort());
-            System.out.println("  Habbo Host: " + config.getServerHost() + ":" + config.getServerPort());
+            consoleUI.printConfig("Proxy Port", String.valueOf(config.getProxyPort()));
+            consoleUI.printConfig("Habbo Host", config.getServerHost() + ":" + config.getServerPort());
             
             // Initialize packet logger
             packetLogger = new PacketLogger();
-            System.out.println("Packet logger initialized");
+            consoleUI.printSuccess("Packet logger initialized");
             
             // Initialize proxy server
             proxyServer = new ProxyServer(config);
-            System.out.println("Proxy server initialized on port " + config.getProxyPort());
+            consoleUI.printSuccess("Proxy server initialized on port " + config.getProxyPort());
             
             // Start proxy server
-            System.out.println("Starting proxy server...");
+            consoleUI.printRunning("Starting proxy server...");
             proxyServer.start();
             running = true;
             
-            System.out.println("========================================");
-            System.out.println("Proxy server is running!");
-            System.out.println("Connect your client to localhost:" + config.getProxyPort());
-            System.out.println("Press Ctrl+C to stop");
-            System.out.println("========================================");
+            consoleUI.printRunning("Proxy server is running");
+            consoleUI.printInfo("Connect your client to localhost:" + config.getProxyPort());
+            consoleUI.printInfo("Press Ctrl+C to stop");
+            consoleUI.printPacketTableHeader();
             
             // Add shutdown hook
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                System.out.println("Shutdown signal received...");
+                consoleUI.printInfo("Shutdown signal received...");
+                consoleUI.printStats(incomingCount, outgoingCount, incomingCount + outgoingCount);
                 shutdown();
             }));
             
@@ -58,7 +57,7 @@ public class Application {
             proxyServer.waitForShutdown();
             
         } catch (Exception e) {
-            System.err.println("Fatal error: " + e.getMessage());
+            consoleUI.printError("Fatal error: " + e.getMessage());
             e.printStackTrace();
             shutdown();
             System.exit(1);
@@ -69,19 +68,37 @@ public class Application {
      * Graceful shutdown
      */
     private static void shutdown() {
-        System.out.println("Shutting down application...");
+        consoleUI.printInfo("Shutting down application...");
         running = false;
         
         if (proxyServer != null) {
             proxyServer.stop();
-            System.out.println("Proxy server stopped");
+            consoleUI.printSuccess("Proxy server stopped");
         }
         
         if (packetLogger != null) {
-            System.out.println("Total packets logged: " + packetLogger.getLogCount());
+            consoleUI.printInfo("Total packets logged: " + packetLogger.getLogCount());
         }
         
-        System.out.println("Application shutdown complete");
+        consoleUI.printSuccess("Application shutdown complete");
+    }
+
+    public static void logPacket(Packet packet) {
+        if (packet == null) {
+            return;
+        }
+
+        if (packetLogger != null) {
+            packetLogger.log(packet);
+        }
+
+        if (packet.getDirection() == Packet.Direction.INCOMING) {
+            incomingCount++;
+        } else if (packet.getDirection() == Packet.Direction.OUTGOING) {
+            outgoingCount++;
+        }
+
+        consoleUI.printPacket(packet);
     }
     
     public static int getLoggedPackets() {

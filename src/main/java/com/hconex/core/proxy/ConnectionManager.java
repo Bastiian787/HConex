@@ -1,6 +1,5 @@
 package com.hconex.core.proxy;
 
-import io.netty.channel.Channel;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -9,47 +8,28 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class ConnectionManager {
     
-    private static final Set<Channel> connections = ConcurrentHashMap.newKeySet();
+    private static final Set<String> connections = ConcurrentHashMap.newKeySet();
     
     /**
-     * Register a new connection
+     * Add a connection
      */
-    public static void addConnection(Channel channel) {
-        connections.add(channel);
-        System.out.println("Connection added. Total connections: " + connections.size());
+    public static void addConnection(String clientId) {
+        connections.add(clientId);
+        System.out.println("Connection added. Total: " + connections.size());
     }
     
     /**
      * Remove a connection
      */
-    public static void removeConnection(Channel channel) {
-        connections.remove(channel);
-        System.out.println("Connection removed. Total connections: " + connections.size());
+    public static void removeConnection(String clientId) {
+        connections.remove(clientId);
+        System.out.println("Connection removed. Total: " + connections.size());
     }
     
     /**
-     * Get number of active connections
+     * Get active connections count
      */
     public static int getActiveConnections() {
         return connections.size();
-    }
-    
-    /**
-     * Close all connections
-     */
-    public static void closeAllConnections() {
-        for (Channel channel : connections) {
-            if (channel.isActive()) {
-                channel.close();
-            }
-        }
-        connections.clear();
-    }
-    
-    /**
-     * Get all active connections
-     */
-    public static Set<Channel> getConnections() {
-        return Set.copyOf(connections);
     }
 }
