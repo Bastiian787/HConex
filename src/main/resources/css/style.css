@@ -1,0 +1,188 @@
+/* ======================================================================
+   HConex – main stylesheet
+   ====================================================================== */
+
+/* ----- Root / background ----- */
+.root-pane {
+    -fx-background-color: #1e1e2e;
+    -fx-font-family: "Segoe UI", "SansSerif";
+    -fx-font-size: 13px;
+}
+
+.panel {
+    -fx-background-color: #1e1e2e;
+}
+
+/* ----- Toolbar / MenuBar ----- */
+.toolbar {
+    -fx-background-color: #181825;
+}
+
+.menu-bar {
+    -fx-background-color: #181825;
+    -fx-text-fill: #cdd6f4;
+}
+
+.menu-bar .menu .label {
+    -fx-text-fill: #cdd6f4;
+}
+
+.tool-bar {
+    -fx-background-color: #181825;
+    -fx-border-color: #313244;
+    -fx-border-width: 0 0 1 0;
+}
+
+/* ----- Buttons ----- */
+.button {
+    -fx-background-color: #313244;
+    -fx-text-fill: #cdd6f4;
+    -fx-background-radius: 4;
+    -fx-cursor: hand;
+}
+
+.button:hover {
+    -fx-background-color: #45475a;
+}
+
+.btn-start {
+    -fx-background-color: #a6e3a1;
+    -fx-text-fill: #1e1e2e;
+    -fx-font-weight: bold;
+}
+
+.btn-start:hover {
+    -fx-background-color: #94e2d5;
+}
+
+.btn-stop {
+    -fx-background-color: #f38ba8;
+    -fx-text-fill: #1e1e2e;
+    -fx-font-weight: bold;
+}
+
+.btn-stop:hover {
+    -fx-background-color: #eba0ac;
+}
+
+.btn-clear {
+    -fx-background-color: #fab387;
+    -fx-text-fill: #1e1e2e;
+}
+
+.btn-primary {
+    -fx-background-color: #89b4fa;
+    -fx-text-fill: #1e1e2e;
+    -fx-font-weight: bold;
+}
+
+/* ----- Table ----- */
+.packet-table {
+    -fx-background-color: #181825;
+    -fx-border-color: #313244;
+    -fx-border-radius: 4;
+}
+
+.table-view .column-header-background {
+    -fx-background-color: #313244;
+}
+
+.table-view .column-header .label {
+    -fx-text-fill: #cdd6f4;
+    -fx-font-weight: bold;
+}
+
+.table-row-cell {
+    -fx-background-color: #181825;
+    -fx-text-fill: #cdd6f4;
+}
+
+.table-row-cell:odd {
+    -fx-background-color: #1e1e2e;
+}
+
+.table-row-cell:selected {
+    -fx-background-color: #313244;
+    -fx-text-fill: #cdd6f4;
+}
+
+.table-row-cell:hover {
+    -fx-background-color: #45475a;
+}
+
+/* ----- Status bar ----- */
+.status-bar {
+    -fx-background-color: #181825;
+    -fx-border-color: #313244;
+    -fx-border-width: 1 0 0 0;
+}
+
+.status-label {
+    -fx-text-fill: #a6e3a1;
+    -fx-font-weight: bold;
+}
+
+/* ----- Labels ----- */
+.label {
+    -fx-text-fill: #cdd6f4;
+}
+
+.settings-title {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #89b4fa;
+}
+
+.info-label {
+    -fx-text-fill: #a6e3a1;
+    -fx-font-style: italic;
+}
+
+/* ----- Text fields ----- */
+.text-field {
+    -fx-background-color: #313244;
+    -fx-text-fill: #cdd6f4;
+    -fx-prompt-text-fill: #6c7086;
+    -fx-border-color: #45475a;
+    -fx-border-radius: 3;
+    -fx-background-radius: 3;
+}
+
+.text-field:focused {
+    -fx-border-color: #89b4fa;
+}
+
+/* ----- Check boxes ----- */
+.check-box .label {
+    -fx-text-fill: #cdd6f4;
+}
+
+/* ----- Titled panes ----- */
+.titled-pane > .title {
+    -fx-background-color: #313244;
+    -fx-text-fill: #cdd6f4;
+}
+
+.titled-pane > .content {
+    -fx-background-color: #1e1e2e;
+    -fx-border-color: #313244;
+}
+
+/* ----- Separators ----- */
+.separator .line {
+    -fx-border-color: #45475a;
+}
+
+/* ----- Scroll bars ----- */
+.scroll-bar {
+    -fx-background-color: #181825;
+}
+
+.scroll-bar .thumb {
+    -fx-background-color: #45475a;
+    -fx-background-radius: 4;
+}
+
+.scroll-bar .thumb:hover {
+    -fx-background-color: #585b70;
+}
