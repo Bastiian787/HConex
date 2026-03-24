@@ -1,208 +1,130 @@
 package com.hconex.core.proxy;
 
 import com.hconex.config.HabboConfig;
-import com.hconex.core.protocol.HabboProtocol;
-import com.hconex.logging.PacketLogger;
+import com.hconex.core.packets.Packet;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelFutureListener;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
-import io.netty.channel.ChannelInitializer;
-import io.netty.channel.ChannelOption;
+import io.netty.channel.*;
+import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 /**
- * Netty {@link ChannelInboundHandlerAdapter} that manages a single proxied
- * connection between a local Habbo client and the remote {@code habbo.es} server.
- * <p>
- * When the client connects, this handler opens a corresponding outbound
- * connection to the remote server.  Data arriving from the client is forwarded
- * to the server (and vice-versa) after being intercepted and logged.
- * </p>
+ * Handles bidirectional proxy between client and Habbo server
  */
-public class ProxyHandler extends ChannelInboundHandlerAdapter {
-
-    private static final Logger logger = LogManager.getLogger(ProxyHandler.class);
-
-    private final String remoteHost;
-    private final int remotePort;
-    private final PacketLogger packetLogger;
-    private final HabboProtocol protocol;
-
-    /** Channel connected to the remote habbo.es server. */
-    private volatile Channel outboundChannel;
-
-    /**
-     * Creates a ProxyHandler that will forward traffic to {@code remoteHost:remotePort}.
-     *
-     * @param remoteHost remote server hostname
-     * @param remotePort remote server port
-     */
-    public ProxyHandler(String remoteHost, int remotePort) {
-        this.remoteHost = remoteHost;
-        this.remotePort = remotePort;
-        this.packetLogger = PacketLogger.getInstance();
-        this.protocol = new HabboProtocol();
+public class ProxyHandler extends SimpleChannelInboundHandler<ByteBuf> {
+    
+    private final HabboConfig config;
+    private Channel serverChannel;
+    private boolean connected = false;
+    
+    public ProxyHandler(HabboConfig config) {
+        this.config = config;
     }
-
-    /**
-     * Called when a client connects.  Opens the outbound channel to the remote
-     * server and registers this connection with {@link ConnectionManager}.
-     */
+    
     @Override
-    public void channelActive(ChannelHandlerContext ctx) {
-        final Channel inboundChannel = ctx.channel();
-        logger.info("Client connected from {}", inboundChannel.remoteAddress());
-
-        Bootstrap outboundBootstrap = new Bootstrap();
-        outboundBootstrap.group(inboundChannel.eventLoop())
+    public void channelActive(ChannelHandlerContext ctx) throws Exception {
+        System.out.println("Client connected: " + ctx.channel().remoteAddress());
+        
+        // Connect to Habbo server
+        Bootstrap bootstrap = new Bootstrap();
+        bootstrap.group(ctx.channel().eventLoop())
                 .channel(NioSocketChannel.class)
-                .option(ChannelOption.AUTO_READ, false)
-                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, HabboConfig.SERVER_CONNECT_TIMEOUT_MS)
                 .handler(new ChannelInitializer<SocketChannel>() {
                     @Override
-                    protected void initChannel(SocketChannel ch) {
-                        ch.pipeline().addLast(
-                                new OutboundHandler(inboundChannel, packetLogger, protocol));
+                    protected void initChannel(SocketChannel ch) throws Exception {
+                        ch.pipeline().addLast(new ServerConnectionHandler(ctx.channel()));
                     }
                 });
-
-        ChannelFuture connectFuture = outboundBootstrap.connect(remoteHost, remotePort);
-        outboundChannel = connectFuture.channel();
-
-        connectFuture.addListener((ChannelFutureListener) future -> {
-            if (future.isSuccess()) {
-                logger.info("Connected to remote server {}:{}", remoteHost, remotePort);
-                ConnectionManager.getInstance().register(inboundChannel, outboundChannel);
-                inboundChannel.read();
+        
+        ChannelFuture future = bootstrap.connect(config.getServerHost(), config.getServerPort());
+        future.addListener(f -> {
+            if (f.isSuccess()) {
+                serverChannel = future.channel();
+                connected = true;
+                System.out.println("Connected to Habbo server: " + config.getServerHost() + ":" + config.getServerPort());
             } else {
-                logger.error("Failed to connect to remote server {}:{}", remoteHost, remotePort,
-                        future.cause());
-                inboundChannel.close();
+                System.err.println("Failed to connect to server: " + f.cause());
+                ctx.close();
             }
         });
     }
-
-    /**
-     * Called when the client sends data.  The raw bytes are intercepted,
-     * logged, and then forwarded to the remote server.
-     */
+    
     @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) {
-        if (outboundChannel != null && outboundChannel.isActive()) {
-            ByteBuf buf = (ByteBuf) msg;
-            byte[] bytes = new byte[buf.readableBytes()];
-            buf.getBytes(buf.readerIndex(), bytes);
-
-            packetLogger.logOutgoing(bytes);
-            protocol.parseOutgoing(bytes);
-
-            outboundChannel.writeAndFlush(msg).addListener((ChannelFutureListener) future -> {
-                if (future.isSuccess()) {
-                    ctx.channel().read();
-                } else {
-                    logger.error("Error forwarding data to remote server", future.cause());
-                    future.channel().close();
-                }
-            });
-        } else {
-            logger.warn("Outbound channel not available – dropping client data");
+    protected void channelRead0(ChannelHandlerContext ctx, ByteBuf msg) throws Exception {
+        if (connected && serverChannel != null && serverChannel.isActive()) {
+            // Log packet from client to server (OUTGOING)
+            byte[] data = new byte[msg.readableBytes()];
+            msg.getBytes(msg.readerIndex(), data);
+            
+            Packet packet = new Packet(0, data, Packet.Direction.OUTGOING);
+            System.out.println("Client -> Server: " + packet);
+            
+            // Forward to server
+            serverChannel.writeAndFlush(Unpooled.copiedBuffer(data));
         }
     }
-
-    /**
-     * Called when the client connection becomes inactive (disconnected).
-     */
+    
     @Override
-    public void channelInactive(ChannelHandlerContext ctx) {
-        logger.info("Client disconnected from {}", ctx.channel().remoteAddress());
-        ConnectionManager.getInstance().unregister(ctx.channel());
-        closeOnFlush(outboundChannel);
+    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+        System.out.println("Client disconnected: " + ctx.channel().remoteAddress());
+        if (serverChannel != null && serverChannel.isActive()) {
+            serverChannel.close();
+        }
+        connected = false;
     }
-
-    /**
-     * Called when an uncaught exception occurs in the pipeline.
-     */
+    
     @Override
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-        logger.error("Exception in proxy handler for channel {}", ctx.channel(), cause);
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+        System.err.println("Error: " + cause.getMessage());
+        cause.printStackTrace();
         ctx.close();
-    }
-
-    /**
-     * Flushes any pending writes and then closes the channel.
-     *
-     * @param ch the channel to close
-     */
-    static void closeOnFlush(Channel ch) {
-        if (ch != null && ch.isActive()) {
-            ch.writeAndFlush(Unpooled.EMPTY_BUFFER).addListener(ChannelFutureListener.CLOSE);
+        if (serverChannel != null && serverChannel.isActive()) {
+            serverChannel.close();
         }
     }
-
-    // =========================================================================
-    // Inner class – handles data arriving FROM the remote server
-    // =========================================================================
-
+    
     /**
-     * Handles the outbound half of the proxy: data coming from the remote
-     * habbo.es server is forwarded back to the local Habbo client.
+     * Inner class to handle server connection
      */
-    static final class OutboundHandler extends ChannelInboundHandlerAdapter {
-
-        private static final Logger outLogger = LogManager.getLogger(OutboundHandler.class);
-
-        private final Channel inboundChannel;
-        private final PacketLogger packetLogger;
-        private final HabboProtocol protocol;
-
-        OutboundHandler(Channel inboundChannel, PacketLogger packetLogger,
-                HabboProtocol protocol) {
-            this.inboundChannel = inboundChannel;
-            this.packetLogger = packetLogger;
-            this.protocol = protocol;
+    private class ServerConnectionHandler extends SimpleChannelInboundHandler<ByteBuf> {
+        
+        private final Channel clientChannel;
+        
+        public ServerConnectionHandler(Channel clientChannel) {
+            this.clientChannel = clientChannel;
         }
-
+        
         @Override
-        public void channelActive(ChannelHandlerContext ctx) {
-            ctx.read();
+        protected void channelRead0(ChannelHandlerContext ctx, ByteBuf msg) throws Exception {
+            // Log packet from server to client (INCOMING)
+            byte[] data = new byte[msg.readableBytes()];
+            msg.getBytes(msg.readerIndex(), data);
+            
+            Packet packet = new Packet(0, data, Packet.Direction.INCOMING);
+            System.out.println("Server -> Client: " + packet);
+            
+            // Forward to client
+            clientChannel.writeAndFlush(Unpooled.copiedBuffer(data));
         }
-
+        
         @Override
-        public void channelRead(ChannelHandlerContext ctx, Object msg) {
-            ByteBuf buf = (ByteBuf) msg;
-            byte[] bytes = new byte[buf.readableBytes()];
-            buf.getBytes(buf.readerIndex(), bytes);
-
-            packetLogger.logIncoming(bytes);
-            protocol.parseIncoming(bytes);
-
-            inboundChannel.writeAndFlush(msg).addListener((ChannelFutureListener) future -> {
-                if (future.isSuccess()) {
-                    ctx.channel().read();
-                } else {
-                    outLogger.error("Error forwarding server data to client", future.cause());
-                    future.channel().close();
-                }
-            });
+        public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+            System.out.println("Server disconnected");
+            if (clientChannel.isActive()) {
+                clientChannel.close();
+            }
         }
-
+        
         @Override
-        public void channelInactive(ChannelHandlerContext ctx) {
-            closeOnFlush(inboundChannel);
-        }
-
-        @Override
-        public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-            outLogger.error("Exception in outbound handler", cause);
+        public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+            System.err.println("Server error: " + cause.getMessage());
+            cause.printStackTrace();
             ctx.close();
+            if (clientChannel.isActive()) {
+                clientChannel.close();
+            }
         }
     }
 }
