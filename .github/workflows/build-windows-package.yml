@@ -31,36 +31,59 @@ jobs:
           # Create output directory
           New-Item -Path dist -ItemType Directory -Force | Out-Null
           
-          # Find the JAR file
-          $jar = Get-ChildItem target/HConex-*.jar | Where-Object { $_.Name -notlike '*original*' } | Select-Object -First 1
+          # Find the compiled JAR (not original)
+          $jar = Get-ChildItem target/*.jar | Where-Object { $_.Name -notlike '*original*' } | Select-Object -First 1
           
           if (-not $jar) {
-            Write-Error "JAR file not found!"
+            Write-Error "JAR not found in target/"
+            Get-ChildItem target/
             exit 1
           }
           
           Write-Output "Found JAR: $($jar.Name)"
-          Copy-Item $jar.FullName -Destination dist/HConex.jar
+          Copy-Item $jar.FullName -Destination dist/hconex.jar
+          
+          # Copy dependencies to lib/ directory
+          if (Test-Path target/dependency) {
+            Copy-Item target/dependency/*.jar -Destination dist/lib/ -Force
+            Write-Output "Copied $((Get-ChildItem dist/lib/*.jar).Count) dependencies"
+          } else {
+            Write-Warning "No dependencies found - this might be OK if all is embedded"
+          }
           
           # Create batch launcher
-          $batContent = @'
+          $batContent = @"
           @echo off
-          REM HConex Launcher
+          REM HConex Launcher - double-click to run
           setlocal enabledelayedexpansion
           
           REM Get the directory where this batch file is located
           set SCRIPT_DIR=%~dp0
           
-          REM Execute the JAR
-          java -jar "!SCRIPT_DIR!HConex.jar"
+          REM Check if Java is available
+          java -version >nul 2>&1
+          if errorlevel 1 (
+            echo.
+            echo ERROR: Java is not installed or not in PATH
+            echo Please install Java 11 or later from:
+            echo https://www.oracle.com/java/technologies/javase-jdk11-downloads.html
+            pause
+            exit /b 1
+          )
+          
+          REM Execute the JAR with dependencies in classpath
+          set "CLASSPATH=!SCRIPT_DIR!hconex.jar"
+          if exist "!SCRIPT_DIR!lib" (
+            for /r "!SCRIPT_DIR!lib" %%f in (*.jar) do set "CLASSPATH=!CLASSPATH!;%%f"
+          )
+          java -cp "!CLASSPATH!" com.hconex.Application
           
           if errorlevel 1 (
             echo.
             echo ERROR: Failed to start HConex
-            echo Make sure Java 11+ is installed and in your PATH
             pause
           )
-          '@
+          "@
           
           Set-Content -Path dist/HConex.bat -Value $batContent -Encoding ASCII
           
