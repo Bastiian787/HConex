@@ -2,6 +2,8 @@ package com.hconex.core.protocol;
 
 import com.hconex.utils.ByteUtils;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Habbo Protocol Parser
@@ -11,6 +13,53 @@ public class HabboProtocol {
     
     public static final int HEADER_SIZE = 4;
     public static final int PACKET_ID_SIZE = 2;
+
+    public List<com.hconex.core.packets.Packet> parseIncoming(byte[] data) {
+        return parsePackets(data, com.hconex.core.packets.Packet.Direction.INCOMING);
+    }
+
+    public List<com.hconex.core.packets.Packet> parseOutgoing(byte[] data) {
+        return parsePackets(data, com.hconex.core.packets.Packet.Direction.OUTGOING);
+    }
+
+    private List<com.hconex.core.packets.Packet> parsePackets(
+            byte[] data,
+            com.hconex.core.packets.Packet.Direction direction) {
+        List<com.hconex.core.packets.Packet> packets = new ArrayList<>();
+        if (data == null || data.length < HEADER_SIZE + PACKET_ID_SIZE) {
+            return packets;
+        }
+
+        int offset = 0;
+        while (offset + HEADER_SIZE + PACKET_ID_SIZE <= data.length) {
+            int packetLength = ByteUtils.readInt(data, offset);
+            if (packetLength < PACKET_ID_SIZE) {
+                break;
+            }
+
+            int packetEnd = offset + HEADER_SIZE + packetLength;
+            if (packetEnd > data.length) {
+                break;
+            }
+
+            int packetId = ByteUtils.readShort(data, offset + HEADER_SIZE);
+            int payloadLength = packetLength - PACKET_ID_SIZE;
+            byte[] payload = new byte[Math.max(payloadLength, 0)];
+            if (payloadLength > 0) {
+                System.arraycopy(
+                        data,
+                        offset + HEADER_SIZE + PACKET_ID_SIZE,
+                        payload,
+                        0,
+                        payloadLength);
+            }
+
+            packets.add(new com.hconex.core.packets.Packet(packetId, payload, direction));
+            offset = packetEnd;
+        }
+
+        return packets;
+    }
     
     /**
      * Parse packet header to get packet length

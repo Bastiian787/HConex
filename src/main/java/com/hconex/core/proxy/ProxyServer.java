@@ -12,6 +12,10 @@ public class ProxyServer {
     private final int localPort;
     private boolean running = false;
 
+    public ProxyServer() {
+        this(new HabboConfig());
+    }
+
     public ProxyServer(HabboConfig config) {
         this.remoteHost = config.getServerHost();
         this.remotePort = config.getServerPort();

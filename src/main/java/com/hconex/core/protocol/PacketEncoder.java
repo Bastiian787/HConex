@@ -84,6 +84,10 @@ public class PacketEncoder {
         byte[] payload = combine(payloadParts);
         return HabboProtocol.buildPacket(packetId, payload);
     }
+
+    public static byte[] encode(int packetId, byte[] payload) {
+        return HabboProtocol.buildPacket(packetId, payload);
+    }
     
     /**
      * Encode a boolean value (stored as 0 or 1)
