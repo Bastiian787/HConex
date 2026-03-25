@@ -23,14 +23,18 @@ jobs:
 
       - name: Build with Maven
         shell: pwsh
-        run: mvn -B clean package -DskipTests
+        run: mvn -B clean package -Dmaven.test.skip=true
 
-      - name: Create distribution package
+      - name: Install WiX Toolset
+        shell: pwsh
+        run: choco install wixtoolset --no-progress -y
+
+      - name: Build Windows EXE with jpackage
         shell: pwsh
         run: |
-          # Create output directory
+          # Prepare folders
           New-Item -Path dist -ItemType Directory -Force | Out-Null
-          New-Item -Path dist/lib -ItemType Directory -Force | Out-Null
+          New-Item -Path target/app-input -ItemType Directory -Force | Out-Null
           
           # Find the compiled JAR (not original)
           $jar = Get-ChildItem target/*.jar | Where-Object { $_.Name -notlike '*original*' } | Select-Object -First 1
@@ -42,62 +46,38 @@ jobs:
           }
           
           Write-Output "Found JAR: $($jar.Name)"
-          Copy-Item $jar.FullName -Destination dist/hconex.jar
+          Copy-Item $jar.FullName -Destination target/app-input/hconex.jar -Force
           
-          # Copy dependencies to lib/ directory
+          # Copy dependencies to app input
           if (Test-Path target/dependency) {
             $dependencies = Get-ChildItem target/dependency/*.jar -ErrorAction SilentlyContinue
             if ($dependencies) {
-              Copy-Item target/dependency/*.jar -Destination dist/lib/ -Force
-              Write-Output "Copied $((Get-ChildItem dist/lib/*.jar).Count) dependencies"
+              Copy-Item target/dependency/*.jar -Destination target/app-input/ -Force
+              Write-Output "Copied $($dependencies.Count) dependencies"
             } else {
               Write-Warning "target/dependency exists but contains no jar files"
             }
           } else {
             Write-Warning "No dependencies found - this might be OK if all is embedded"
           }
-          
-          # Create batch launcher
-          $batContent = @"
-          @echo off
-          REM HConex Launcher - double-click to run
-          setlocal enabledelayedexpansion
-          
-          REM Get the directory where this batch file is located
-          set SCRIPT_DIR=%~dp0
-          
-          REM Check if Java is available
-          java -version >nul 2>&1
-          if errorlevel 1 (
-            echo.
-            echo ERROR: Java is not installed or not in PATH
-            echo Please install Java 11 or later from:
-            echo https://www.oracle.com/java/technologies/javase-jdk11-downloads.html
-            pause
-            exit /b 1
-          )
-          
-          REM Execute the JAR with dependencies in classpath
-          set "CLASSPATH=!SCRIPT_DIR!hconex.jar"
-          if exist "!SCRIPT_DIR!lib" (
-            for /r "!SCRIPT_DIR!lib" %%f in (*.jar) do set "CLASSPATH=!CLASSPATH!;%%f"
-          )
-          java -cp "!CLASSPATH!" com.hconex.Application
-          
-          if errorlevel 1 (
-            echo.
-            echo ERROR: Failed to start HConex
-            pause
-          )
-          "@
-          
-          Set-Content -Path dist/HConex.bat -Value $batContent -Encoding ASCII
-          
-          Write-Output "Package created successfully!"
-          Get-ChildItem dist -Recurse
+
+          # Build real EXE installer with bundled runtime
+          jpackage `
+            --type exe `
+            --name HConex `
+            --input target/app-input `
+            --main-jar hconex.jar `
+            --main-class com.hconex.Application `
+            --dest dist `
+            --win-shortcut `
+            --win-menu `
+            --win-dir-chooser
+
+          Write-Output "EXE package created successfully"
+          Get-ChildItem dist
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: HConex-Windows
+          name: HConex-Windows-EXE
           path: dist/

@@ -2,6 +2,7 @@ package com.hconex;
 
 import com.hconex.config.HabboConfig;
 import com.hconex.core.proxy.ProxyServer;
+import java.awt.GraphicsEnvironment;
 import java.util.concurrent.CountDownLatch;
 
 /**
@@ -13,17 +14,35 @@ public final class Application {
     }
 
     public static void main(String[] args) {
-        if (!isHeadlessEnvironment()) {
-            System.out.println("[INFO] Entorno con GUI detectado, pero esta build usa entrypoint de consola.");
+        if (isHeadlessRequested(args) || isHeadlessEnvironment()) {
+            runHeadlessProxy();
+            return;
         }
-        runHeadlessProxy();
+
+        System.out.println("[INFO] Entorno con GUI detectado. Iniciando interfaz de HConex...");
+        try {
+            HConexApplication.launchApp(args);
+        } catch (Throwable error) {
+            System.err.println("[WARN] No se pudo iniciar la interfaz gráfica: " + error.getMessage());
+            System.err.println("[WARN] Entrando en modo consola...");
+            runHeadlessProxy();
+        }
+    }
+
+    private static boolean isHeadlessRequested(String[] args) {
+        if (args == null) {
+            return false;
+        }
+        for (String arg : args) {
+            if ("--headless".equalsIgnoreCase(arg)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean isHeadlessEnvironment() {
-        String display = System.getenv("DISPLAY");
-        String waylandDisplay = System.getenv("WAYLAND_DISPLAY");
-        return (display == null || display.isBlank())
-                && (waylandDisplay == null || waylandDisplay.isBlank());
+        return GraphicsEnvironment.isHeadless();
     }
 
     private static void runHeadlessProxy() {

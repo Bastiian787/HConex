@@ -5,7 +5,7 @@ title HConex - Build EXE
 cd /d %~dp0\..\..
 
 echo [INFO] Building JAR with Maven...
-call mvn clean package -DskipTests
+call mvn clean package -Dmaven.test.skip=true
 if errorlevel 1 (
   echo [ERROR] Maven build failed.
   pause
@@ -27,6 +27,14 @@ if "%JAR_FILE%"=="" (
 
 echo [INFO] Using JAR: %JAR_FILE%
 
+echo [INFO] Preparing app-input folder...
+if exist target\app-input rmdir /s /q target\app-input
+mkdir target\app-input
+copy /y target\%JAR_FILE% target\app-input\hconex.jar >nul
+if exist target\dependency\*.jar (
+  copy /y target\dependency\*.jar target\app-input\ >nul
+)
+
 where jpackage >nul 2>&1
 if errorlevel 1 (
   echo [ERROR] jpackage not found. Install JDK 17+ and ensure jpackage is in PATH.
@@ -40,25 +48,23 @@ if not exist dist mkdir dist
 jpackage ^
   --type exe ^
   --name HConex ^
-  --input target ^
-  --main-jar %JAR_FILE% ^
+  --input target\app-input ^
+  --main-jar hconex.jar ^
   --main-class com.hconex.Application ^
   --dest dist ^
   --win-shortcut ^
   --win-menu ^
-  --win-dir-chooser ^
-  --win-console
+  --win-dir-chooser
 
 if errorlevel 1 (
-  echo [WARN] EXE packaging failed (likely missing WiX). Creating portable app-image...
+  echo [WARN] EXE packaging failed (possibly missing WiX). Creating portable app-image...
   jpackage ^
     --type app-image ^
     --name HConex ^
-    --input target ^
-    --main-jar %JAR_FILE% ^
+    --input target\app-input ^
+    --main-jar hconex.jar ^
     --main-class com.hconex.Application ^
-    --dest dist ^
-    --win-console
+    --dest dist
 )
 
 if errorlevel 1 (

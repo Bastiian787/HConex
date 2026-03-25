@@ -106,6 +106,8 @@ scripts\windows\build-exe.bat
 
 The package will be generated under `dist\`.
 
+This generates a **real Windows installer (.exe)** using `jpackage` (with bundled Java runtime).
+
 > Note: if WiX is not installed, the script falls back to a portable `app-image` build.
 
 ### Automatic packaging in GitHub Actions
@@ -116,6 +118,17 @@ This repository includes a workflow at `.github/workflows/build-windows-package.
 - Or push a tag like `v0.0.1`
 
 The generated Windows package is uploaded as a workflow artifact (`hconex-windows-package`).
+
+The artifact now contains the installer as `HConex-*.exe` (artifact name: `HConex-Windows-EXE`).
+
+## Runtime mode
+
+- In normal Windows desktop environments, HConex starts with GUI.
+- To force console/proxy mode, launch with:
+
+```bash
+java -jar hconex.jar --headless
+```
 
 ## Configuration
 
