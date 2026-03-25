@@ -23,7 +23,8 @@ jobs:
 
       - name: Build with Maven
         shell: pwsh
-        run: mvn -B clean package -Dmaven.test.skip=true
+        run: |
+          & mvn '-B' 'clean' 'package' '-Dmaven.test.skip=true'
 
       - name: Install WiX Toolset
         shell: pwsh
