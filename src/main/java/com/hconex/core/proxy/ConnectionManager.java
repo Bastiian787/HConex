@@ -7,8 +7,17 @@ import java.util.concurrent.ConcurrentHashMap;
  * Manages active client connections
  */
 public class ConnectionManager {
+
+    private static final ConnectionManager INSTANCE = new ConnectionManager();
     
     private static final Set<String> connections = ConcurrentHashMap.newKeySet();
+
+    private ConnectionManager() {
+    }
+
+    public static ConnectionManager getInstance() {
+        return INSTANCE;
+    }
     
     /**
      * Add a connection
@@ -31,5 +40,9 @@ public class ConnectionManager {
      */
     public static int getActiveConnections() {
         return connections.size();
+    }
+
+    public int getActiveCount() {
+        return getActiveConnections();
     }
 }

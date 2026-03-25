@@ -1,22 +1,26 @@
 package com.hconex.logging;
 
-import java.time.LocalDateTime;
+import com.hconex.core.packets.Packet;
+
+import java.time.Instant;
 
 public class LogEntry {
-    private int packetId;
-    private String direction;
-    private byte[] data;
-    private LocalDateTime timestamp;
+    private int headerId;
+    private Packet.Direction direction;
+    private byte[] rawData;
+    private Instant timestamp;
     
-    public LogEntry(int packetId, String direction, byte[] data, LocalDateTime timestamp) {
-        this.packetId = packetId;
+    public LogEntry(int headerId, Packet.Direction direction, byte[] rawData, Instant timestamp) {
+        this.headerId = headerId;
         this.direction = direction;
-        this.data = data;
+        this.rawData = rawData;
         this.timestamp = timestamp;
     }
     
-    public int getPacketId() { return packetId; }
-    public String getDirection() { return direction; }
-    public byte[] getData() { return data; }
-    public LocalDateTime getTimestamp() { return timestamp; }
+    public int getPacketId() { return headerId; }
+    public int getHeaderId() { return headerId; }
+    public Packet.Direction getDirection() { return direction; }
+    public byte[] getData() { return rawData; }
+    public byte[] getRawData() { return rawData; }
+    public Instant getTimestamp() { return timestamp; }
 }

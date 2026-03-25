@@ -16,4 +16,22 @@ public class HexUtils {
         }
         return bytes;
     }
+
+    public static String toHex(byte[] bytes) {
+        return bytesToHex(bytes);
+    }
+
+    public static byte[] fromHex(String hex) {
+        return hexToBytes(hex);
+    }
+
+    public static String toHexSpaced(byte[] bytes) {
+        if (bytes == null || bytes.length == 0) return "";
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < bytes.length; i++) {
+            if (i > 0) sb.append(' ');
+            sb.append(String.format("%02X", bytes[i]));
+        }
+        return sb.toString();
+    }
 }

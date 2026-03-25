@@ -6,12 +6,22 @@ import com.hconex.config.HabboConfig;
  * TCP Proxy Server
  */
 public class ProxyServer {
-    
-    private final HabboConfig config;
+
+    private final String remoteHost;
+    private final int remotePort;
+    private final int localPort;
     private boolean running = false;
-    
+
     public ProxyServer(HabboConfig config) {
-        this.config = config;
+        this.remoteHost = config.getServerHost();
+        this.remotePort = config.getServerPort();
+        this.localPort = config.getProxyPort();
+    }
+
+    public ProxyServer(String remoteHost, int remotePort, int localPort) {
+        this.remoteHost = remoteHost;
+        this.remotePort = remotePort;
+        this.localPort = localPort;
     }
     
     /**
@@ -19,8 +29,8 @@ public class ProxyServer {
      */
     public void start() throws InterruptedException {
         running = true;
-        System.out.println("Proxy Server started on port " + config.getProxyPort());
-        System.out.println("Connecting to " + config.getServerHost() + ":" + config.getServerPort());
+        System.out.println("Proxy Server started on port " + localPort);
+        System.out.println("Connecting to " + remoteHost + ":" + remotePort);
     }
     
     /**
@@ -35,7 +45,7 @@ public class ProxyServer {
     /**
      * Stop the proxy server
      */
-    public void stop() {
+    public void stop() throws InterruptedException {
         System.out.println("Shutting down proxy server...");
         running = false;
     }
@@ -45,5 +55,17 @@ public class ProxyServer {
      */
     public boolean isRunning() {
         return running;
+    }
+
+    public int getLocalPort() {
+        return localPort;
+    }
+
+    public String getRemoteHost() {
+        return remoteHost;
+    }
+
+    public int getRemotePort() {
+        return remotePort;
     }
 }

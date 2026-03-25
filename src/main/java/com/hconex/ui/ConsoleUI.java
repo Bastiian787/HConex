@@ -2,7 +2,9 @@ package com.hconex.ui;
 
 import com.hconex.core.packets.Packet;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 
 public class ConsoleUI {
@@ -65,7 +67,8 @@ public class ConsoleUI {
 			return;
 		}
 
-		LocalDateTime timestamp = packet.getTimestamp() != null ? packet.getTimestamp() : LocalDateTime.now();
+		Instant instant = packet.getTimestamp() != null ? packet.getTimestamp() : Instant.now();
+		LocalDateTime timestamp = LocalDateTime.ofInstant(instant, ZoneId.systemDefault());
 		String time = timestamp.format(TIME_FORMAT);
 		String direction = packet.getDirection() != null ? packet.getDirection().name() : "UNKNOWN";
 		int packetId = packet.getId();

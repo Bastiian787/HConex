@@ -12,6 +12,7 @@
 /workspaces/HConex/src/main/java/com/hconex/core/protocol/HabboProtocol.java
 /workspaces/HConex/src/main/java/HConexApp.java
 /workspaces/HConex/src/main/java/com/hconex/ui/controllers/ConnectionController.java
+/workspaces/HConex/src/main/java/com/hconex/ui/ConsoleUI.java
 /workspaces/HConex/src/main/java/com/hconex/logging/LogEntry.java
 /workspaces/HConex/src/main/java/com/hconex/core/proxy/ProxyHandler.java
 /workspaces/HConex/src/main/java/com/hconex/ui/controllers/PacketLogController.java
@@ -20,7 +21,5 @@
 /workspaces/HConex/src/main/java/com/hconex/core/proxy/ConnectionManager.java
 /workspaces/HConex/src/main/java/com/hconex/core/protocol/PacketEncoder.java
 /workspaces/HConex/src/main/java/com/hconex/core/crypto/Encryption.java
-/workspaces/HConex/src/main/java/com/hconex/HConexApplication.java
 /workspaces/HConex/src/main/java/com/hconex/extensions/ExtensionLoader.java
-/workspaces/HConex/src/main/java/com/hconex/HConexApp.java
 /workspaces/HConex/src/main/java/com/hconex/core/protocol/PacketFactory.java
