@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.hconex.ui.controllers.MainController"
+            prefWidth="900" prefHeight="600"
+            styleClass="root-pane">
+
+    <!-- ===== TOP: toolbar ===== -->
+    <top>
+        <VBox styleClass="toolbar">
+            <MenuBar>
+                <Menu text="Archivo">
+                    <MenuItem text="Exportar log…" />
+                    <SeparatorMenuItem />
+                    <MenuItem text="Salir" onAction="#onStopProxy" />
+                </Menu>
+                <Menu text="Proxy">
+                    <MenuItem text="Iniciar" onAction="#onStartProxy" />
+                    <MenuItem text="Detener" onAction="#onStopProxy" />
+                </Menu>
+                <Menu text="Ayuda">
+                    <MenuItem text="Acerca de HConex" />
+                </Menu>
+            </MenuBar>
+
+            <ToolBar>
+                <Button fx:id="btnStartProxy" text="▶ Iniciar Proxy"
+                        onAction="#onStartProxy" styleClass="btn-start" />
+                <Button fx:id="btnStopProxy" text="■ Detener Proxy"
+                        onAction="#onStopProxy" styleClass="btn-stop" />
+                <Separator />
+                <Button fx:id="btnClearLog" text="🗑 Limpiar Log"
+                        onAction="#onClearLog" styleClass="btn-clear" />
+            </ToolBar>
+        </VBox>
+    </top>
+
+    <!-- ===== CENTER: packet table ===== -->
+    <center>
+        <TableView fx:id="packetTable" styleClass="packet-table">
+            <columns>
+                <TableColumn fx:id="colTime" text="Hora" prefWidth="100" />
+                <TableColumn fx:id="colDirection" text="Dirección" prefWidth="90" />
+                <TableColumn fx:id="colHeader" text="Opcode" prefWidth="80" />
+                <TableColumn fx:id="colLength" text="Bytes" prefWidth="70" />
+                <TableColumn fx:id="colHex" text="Hex" prefWidth="460" />
+            </columns>
+            <placeholder>
+                <Label text="No hay paquetes capturados todavía." />
+            </placeholder>
+        </TableView>
+    </center>
+
+    <!-- ===== BOTTOM: status bar ===== -->
+    <bottom>
+        <HBox styleClass="status-bar" spacing="16">
+            <padding><Insets top="4" right="8" bottom="4" left="8" /></padding>
+            <Label fx:id="lblStatus" text="Desconectado" styleClass="status-label" />
+            <Separator orientation="VERTICAL" />
+            <Label fx:id="lblConnections" text="Conexiones: 0" />
+            <Separator orientation="VERTICAL" />
+            <Label fx:id="lblPacketCount" text="Paquetes: 0" />
+        </HBox>
+    </bottom>
+
+</BorderPane>

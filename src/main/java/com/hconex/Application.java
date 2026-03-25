@@ -1,5 +1,6 @@
 package com.hconex;
 
+<<<<<<< HEAD
 import com.hconex.config.HabboConfig;
 import com.hconex.core.packets.Packet;
 import com.hconex.core.proxy.ProxyServer;
@@ -111,5 +112,17 @@ public class Application {
     
     public static boolean isRunning() {
         return running;
+=======
+/**
+ * Canonical application entry point for HConex.
+ */
+public final class Application {
+
+    private Application() {
+    }
+
+    public static void main(String[] args) {
+        HConexApplication.main(args);
+>>>>>>> 5ed2b83 (Unify root module entrypoint and run script)
     }
 }
