@@ -21,41 +21,54 @@ jobs:
           java-version: '21'
           cache: maven
 
-      - name: Build JAR
+      - name: Build with Maven
         shell: pwsh
         run: mvn -B clean package -DskipTests
 
-      - name: List JARs generated
-        shell: pwsh
-        run: Get-ChildItem target\*.jar
-
-      - name: Detect runnable JAR
-        id: jar
+      - name: Create distribution package
         shell: pwsh
         run: |
-          $jars = Get-ChildItem target\*.jar | Where-Object { $_.Name -notlike 'original-*' }
-          if ($jars.Count -eq 0) { 
-            Write-Error "No runnable jar found in target"
-            exit 1 
-          }
-          $jar = $jars | Select-Object -First 1
-          Write-Output "Found JAR: $($jar.Name)"
-          "name=$($jar.Name)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-
-      - name: Install WiX (for EXE)
-        shell: pwsh
-        run: choco install wixtoolset --no-progress -y
-
-      - name: Build EXE with jpackage
-        shell: pwsh
-        run: |
+          # Create output directory
           New-Item -Path dist -ItemType Directory -Force | Out-Null
-          $jarName = "${{ steps.jar.outputs.name }}"
-          Write-Output "Building EXE with JAR: $jarName"
-          jpackage --type exe --name HConex --input target --main-jar $jarName --main-class com.hconex.Application --dest dist --win-shortcut --win-menu --win-dir-chooser --win-console
+          
+          # Find the JAR file
+          $jar = Get-ChildItem target/HConex-*.jar | Where-Object { $_.Name -notlike '*original*' } | Select-Object -First 1
+          
+          if (-not $jar) {
+            Write-Error "JAR file not found!"
+            exit 1
+          }
+          
+          Write-Output "Found JAR: $($jar.Name)"
+          Copy-Item $jar.FullName -Destination dist/HConex.jar
+          
+          # Create batch launcher
+          $batContent = @'
+          @echo off
+          REM HConex Launcher
+          setlocal enabledelayedexpansion
+          
+          REM Get the directory where this batch file is located
+          set SCRIPT_DIR=%~dp0
+          
+          REM Execute the JAR
+          java -jar "!SCRIPT_DIR!HConex.jar"
+          
+          if errorlevel 1 (
+            echo.
+            echo ERROR: Failed to start HConex
+            echo Make sure Java 11+ is installed and in your PATH
+            pause
+          )
+          '@
+          
+          Set-Content -Path dist/HConex.bat -Value $batContent -Encoding ASCII
+          
+          Write-Output "Package created successfully!"
+          Get-ChildItem dist
 
-      - name: Upload package artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: hconex-windows-package
-          path: dist/**
+          name: HConex-Windows
+          path: dist/
