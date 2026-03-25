@@ -1,0 +1,50 @@
+name: Build Windows Package
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  package-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Build JAR
+        shell: pwsh
+        run: mvn -B clean package -DskipTests
+
+      - name: Detect runnable JAR
+        id: jar
+        shell: pwsh
+        run: |
+          $jar = Get-ChildItem target\*.jar | Where-Object { $_.Name -notlike 'original-*' } | Select-Object -First 1
+          if (-not $jar) { throw 'No runnable jar found in target' }
+          "name=$($jar.Name)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Install WiX (for EXE)
+        shell: pwsh
+        run: choco install wixtoolset --no-progress -y
+
+      - name: Build EXE with jpackage
+        shell: pwsh
+        run: |
+          New-Item -Path dist -ItemType Directory -Force | Out-Null
+          jpackage --type exe --name HConex --input target --main-jar "${{ steps.jar.outputs.name }}" --main-class com.hconex.Application --dest dist --win-shortcut --win-menu --win-dir-chooser --win-console
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hconex-windows-package
+          path: dist/**
