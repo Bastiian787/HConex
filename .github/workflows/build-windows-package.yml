@@ -25,12 +25,21 @@ jobs:
         shell: pwsh
         run: mvn -B clean package -DskipTests
 
+      - name: List JARs generated
+        shell: pwsh
+        run: Get-ChildItem target\*.jar
+
       - name: Detect runnable JAR
         id: jar
         shell: pwsh
         run: |
-          $jar = Get-ChildItem target\*.jar | Where-Object { $_.Name -notlike 'original-*' } | Select-Object -First 1
-          if (-not $jar) { throw 'No runnable jar found in target' }
+          $jars = Get-ChildItem target\*.jar | Where-Object { $_.Name -notlike 'original-*' }
+          if ($jars.Count -eq 0) { 
+            Write-Error "No runnable jar found in target"
+            exit 1 
+          }
+          $jar = $jars | Select-Object -First 1
+          Write-Output "Found JAR: $($jar.Name)"
           "name=$($jar.Name)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
       - name: Install WiX (for EXE)
@@ -41,7 +50,9 @@ jobs:
         shell: pwsh
         run: |
           New-Item -Path dist -ItemType Directory -Force | Out-Null
-          jpackage --type exe --name HConex --input target --main-jar "${{ steps.jar.outputs.name }}" --main-class com.hconex.Application --dest dist --win-shortcut --win-menu --win-dir-chooser --win-console
+          $jarName = "${{ steps.jar.outputs.name }}"
+          Write-Output "Building EXE with JAR: $jarName"
+          jpackage --type exe --name HConex --input target --main-jar $jarName --main-class com.hconex.Application --dest dist --win-shortcut --win-menu --win-dir-chooser --win-console
 
       - name: Upload package artifact
         uses: actions/upload-artifact@v4
