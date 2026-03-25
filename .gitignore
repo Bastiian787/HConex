@@ -15,5 +15,6 @@ __pycache__/
 *.class
 *.snapshot
 # Maven-related files
+target/
 */target/
 */.mvn/
