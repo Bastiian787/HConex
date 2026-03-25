@@ -30,6 +30,7 @@ jobs:
         run: |
           # Create output directory
           New-Item -Path dist -ItemType Directory -Force | Out-Null
+          New-Item -Path dist/lib -ItemType Directory -Force | Out-Null
           
           # Find the compiled JAR (not original)
           $jar = Get-ChildItem target/*.jar | Where-Object { $_.Name -notlike '*original*' } | Select-Object -First 1
@@ -45,8 +46,13 @@ jobs:
           
           # Copy dependencies to lib/ directory
           if (Test-Path target/dependency) {
-            Copy-Item target/dependency/*.jar -Destination dist/lib/ -Force
-            Write-Output "Copied $((Get-ChildItem dist/lib/*.jar).Count) dependencies"
+            $dependencies = Get-ChildItem target/dependency/*.jar -ErrorAction SilentlyContinue
+            if ($dependencies) {
+              Copy-Item target/dependency/*.jar -Destination dist/lib/ -Force
+              Write-Output "Copied $((Get-ChildItem dist/lib/*.jar).Count) dependencies"
+            } else {
+              Write-Warning "target/dependency exists but contains no jar files"
+            }
           } else {
             Write-Warning "No dependencies found - this might be OK if all is embedded"
           }
@@ -88,7 +94,7 @@ jobs:
           Set-Content -Path dist/HConex.bat -Value $batContent -Encoding ASCII
           
           Write-Output "Package created successfully!"
-          Get-ChildItem dist
+          Get-ChildItem dist -Recurse
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
