@@ -90,6 +90,33 @@ mvn test
 mvn javafx:run
 ```
 
+## Windows App Packaging (.exe)
+
+If you want a tangible Windows app experience (similar to G-Earth), use the packaged executable flow.
+
+### Local packaging on Windows
+
+1. Install **JDK 17+** (with `jpackage`) and **Maven**.
+2. Open `cmd` in the project root.
+3. Run:
+
+```bat
+scripts\windows\build-exe.bat
+```
+
+The package will be generated under `dist\`.
+
+> Note: if WiX is not installed, the script falls back to a portable `app-image` build.
+
+### Automatic packaging in GitHub Actions
+
+This repository includes a workflow at `.github/workflows/build-windows-package.yml`.
+
+- Trigger manually via **Actions → Build Windows Package → Run workflow**
+- Or push a tag like `v0.0.1`
+
+The generated Windows package is uploaded as a workflow artifact (`hconex-windows-package`).
+
 ## Configuration
 
 Server settings are defined in `HabboConfig.java`:
